@@ -14,9 +14,13 @@
 ## Usage
 
 ```php
-$n26 = new leuchte\Number26\Number26;
+use leuchte\Number26\Number26;
 
-// Get transaction 
+require __DIR__ . '/vendor/autoload.php';
+
+$n26 = new Number26('email@number26.eu', 'yourPassword');
+
+// Get transactions 
 $transactions = $n26->getTransactions(['sort' => 'visibleTS', 'dir' => 'ASC', 'offset' => 0, 'limit' => 200]);
 
 // Create transaction

@@ -1,23 +1,63 @@
 <?php
-namespace leuchte\Number26
+
+/**
+ * Number26
+ * 
+ * @author   André Daßler <mail@leuchte.net>
+ * @license  http://opensource.org/licenses/MIT
+ * @package  Number26
+ */
+
+namespace leuchte\Number26;
 
 class Number26
 {
+    /**
+     * API Base url
+     */
     protected $apiUrl = 'https://api.tech26.de';
+
+    /**
+     * Token uses as authentification
+     */
     protected $accessToken = null;
+
+    /**
+     * Seconds until session expire
+     */
     protected $expiresTime = 0;
+
+    /**
+     * JSON object for the api response
+     */
     protected $apiResponse;
+
+    /**
+     * Returned header after an api call
+     */
     protected $apiHeader;
+
+    /**
+     * Informations after an api call
+     */
     protected $apiInfo;
+
+    /**
+     * Show curl errors if thrown
+     */
     protected $apiError;
+
+    /**
+     * Temporary storage for csv output
+     */
     protected $csvOutput = '';
 
 
     /**
      * Create a new Number26 instance
      * 
-     * @param [type] $username [description]
-     * @param [type] $password [description]
+     * @param string $username
+     * @param string $password
      */
     public function __construct($username, $password)
     {
