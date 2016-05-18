@@ -1,0 +1,24 @@
+{
+    "name": "leuchte/number26",
+    "description": "Simple PHP wrapper for the unofficial number26.eu api",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Leuchte",
+            "email": "mail@leuchte.net"
+        }
+    ],
+    "require": {
+        "php": ">=5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "leuchte\\number26\\": "src/"
+        }
+    },
+    "extra": {
+	    "branch-alias": {
+	      "dev-master": "0.1-dev"
+	    }
+  }
+}
