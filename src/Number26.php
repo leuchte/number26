@@ -23,7 +23,7 @@ class Number26
     protected $accessToken = null;
 
     /**
-     * Seconds until session expire
+     * Time when session expire
      */
     protected $expiresTime = 0;
 
@@ -38,7 +38,7 @@ class Number26
     protected $apiHeader;
 
     /**
-     * Informations after an api call
+     * Response informations as array after an api call
      */
     protected $apiInfo;
 
@@ -66,6 +66,11 @@ class Number26
                 'grant_type'    => 'password',
                 'username'      => $username,
                 'password'      => $password], true, 'POST');
+
+            if(isset($apiResult->error) || isset($apiResult->error_description)) {
+                die($apiResult->error . ': ' . $apiResult->error_description);
+            }
+
             $this->accessToken = $apiResult->access_token;
             $this->expiresTime = time() + $apiResult->expires_in;
             setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
@@ -348,7 +353,7 @@ class Number26
             $csvOutput .= trim(isset($transaction->referenceText) ? $transaction->referenceText : $transaction->merchantName) . $sep;
             $csvOutput .= (isset($transaction->partnerIban) ? $transaction->partnerIban : '') . $sep;
             $csvOutput .= (isset($transaction->partnerBic) ? $transaction->partnerBic : '') . $sep;
-            $csvOutput .= (in_array($transaction->type, ['FT', 'PT', 'AA'])) ? '-' : '';
+            $csvOutput .= (in_array($transaction->type, ['DD', 'FT', 'PT', 'AA'])) ? '-' : '';
             $csvOutput .= number_format($transaction->amount, 2, ',', '.') . $sep;
             $csvOutput .= $transaction->currencyCode->currencyCode . "\r\n";
         }
