@@ -18,7 +18,7 @@ class Number26
     protected $apiUrl = 'https://api.tech26.de';
 
     /**
-     * Token uses as authentification
+     * Token used as authentification
      */
     protected $accessToken = null;
 
