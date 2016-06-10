@@ -9,6 +9,7 @@
  */
 
 namespace leuchte\Number26;
+use \DateTime;
 
 class Number26
 {
@@ -158,7 +159,11 @@ class Number26
             $errmsg = curl_error($curl);
             $this->apiError = 'curl-Error: ' . $errno . ': ' . $errmsg;
         }
-        $this->apiResponse = json_decode(substr($response, $this->apiInfo['header_size']));
+        $this->apiResponse = substr($response, $this->apiInfo['header_size']);
+
+        if(strpos($this->apiInfo['content_type'], 'json')) {
+            $this->apiResponse = json_decode($this->apiResponse);
+        }
 
         return $this->apiResponse;
     }
@@ -176,6 +181,7 @@ class Number26
         $httpHeader[] = 'Authorization: ' . $header;
         $httpHeader[] = 'Accept: application/json';
         $httpHeader[] = 'Content-Type: application/json';
+        $httpHeader[] = 'Accept: */*';
 
         return $httpHeader;
     }
@@ -333,6 +339,29 @@ class Number26
     public function getCategories()
     {
         return $this->callApi('/api/smrt/categories');
+    }
+
+    /**
+     * Get a csv report
+     * 
+     * @param  DateTime $startDate
+     * @param  DateTime $endDate
+     * @param  string   $saveFileLocation Where to save the report
+     * @return object
+     */
+    public function getReport(DateTime $startDate, DateTime $endDate, $saveFileLocation = '')
+    {
+        // Use the whole start- and endday in microseconds
+        $start = $startDate->setTime(0, 0)->getTimestamp() * 1000;
+        $end = $endDate->setTime(23, 59, 59)->getTimestamp() * 1000;
+        $response = $this->callApi('/api/smrt/reports/' . $start . '/' . $end . '/statements');
+        
+        if($saveFileLocation != '') {
+            $fileName = $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
+            file_put_contents($saveFileLocation . '/' . $fileName, $response);
+        }
+
+        return $response;
     }
 
     /**
