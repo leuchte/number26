@@ -2,7 +2,7 @@
 
 /**
  * Number26
- * 
+ *
  * @author   André Daßler <mail@leuchte.net>
  * @license  http://opensource.org/licenses/MIT
  * @package  Number26
@@ -56,7 +56,7 @@ class Number26
 
     /**
      * Create a new Number26 instance
-     * 
+     *
      * @param string $username
      * @param string $password
      */
@@ -81,7 +81,7 @@ class Number26
 
     /**
      * Is there a valid auth cookie?
-     * 
+     *
      * @return boolean true if valid
      */
     public function isLoggedIn()
@@ -92,10 +92,10 @@ class Number26
 
         return false;
     }
-    
+
     /**
      * Is the saved token valid?
-     * 
+     *
      * @return boolean true if valid
      */
     protected function isValidConnection()
@@ -104,7 +104,7 @@ class Number26
             $this->expiresTime = $_COOKIE['n26Expire'];
             if (time() < $this->expiresTime) {
                 $this->accessToken = $_COOKIE['n26Token'];
-                
+
                 return true;
             }
         }
@@ -124,7 +124,7 @@ class Number26
 
     /**
      * Build a valid API Url and send it via curl
-     * 
+     *
      * @param  string  $apiResource
      * @param  array|string  $params
      * @param  boolean $basic       Basic auth or with bearer token
@@ -143,7 +143,7 @@ class Number26
             CURLOPT_HTTPHEADER => $this->getHeader($basic),
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_SSL_VERIFYPEER => false];
-        
+
         if ($method == 'POST') {
             $curlOptions[CURLOPT_POST] = true;
             $curlOptions[CURLOPT_POSTFIELDS] = $params;
@@ -170,7 +170,7 @@ class Number26
 
     /**
      * Build the header for authorization
-     * 
+     *
      * @param  boolean $basic True if bearer token is used
      * @return array         Built header
      */
@@ -188,7 +188,7 @@ class Number26
 
     /**
      * Convert an key-value array into an query string
-     * 
+     *
      * @param  array  $params
      * @return string
      */
@@ -204,7 +204,7 @@ class Number26
 
     /**
      * Returns basic information about the account holder
-     * 
+     *
      * @param  boolean $full true for more informations
      * @return object
      */
@@ -215,17 +215,17 @@ class Number26
 
     /**
      * Shows all registered cards
-     * 
+     *
      * @return object
      */
     public function getCards()
     {
-        return $this->callApi('/api/cards/offer');
+        return $this->callApi('/api/v2/cards');
     }
 
     /**
      * Information about card with id $id
-     * 
+     *
      * @param  string $id
      * @return object
      */
@@ -236,7 +236,7 @@ class Number26
 
     /**
      * Basic account information
-     * 
+     *
      * @return object
      */
     public function getAccounts()
@@ -246,7 +246,7 @@ class Number26
 
     /**
      * All saved addresses, ie. for shipping
-     * 
+     *
      * @return object
      */
     public function getAddresses()
@@ -256,7 +256,7 @@ class Number26
 
     /**
      * Address with id $id
-     * 
+     *
      * @param  string $id
      * @return object
      */
@@ -267,19 +267,18 @@ class Number26
 
     /**
      * Get all transactions
-     * 
+     *
      * @param  array $params sort, offset, limit, dir, textFilter
      * @return object
      */
     public function getTransactions(...$params)
     {
-        $params = (isset($params[0])) ? $this->buildParams($params[0]) : '';
-        return $this->callApi('/api/transactions' . $params);
+        return $this->getSmrtTransactions($params);
     }
 
     /**
-     * Get all smart(?) transactions
-     * 
+     * Get all smart transactions
+     *
      * @param  array $params limit, textFilter
      * @return object
      */
@@ -291,7 +290,7 @@ class Number26
 
     /**
      * Get a single transaction with the id $id
-     * 
+     *
      * @param  string $id
      * @return object
      */
@@ -301,8 +300,8 @@ class Number26
     }
 
     /**
-     * Get a smart(?) single transaction with the id $id
-     * 
+     * Get a smart single transaction with the id $id
+     *
      * @param  string $id
      * @return object
      */
@@ -313,7 +312,7 @@ class Number26
 
     /**
      * Get all transfer recipients so far
-     * 
+     *
      * @return object
      */
     public function getRecipients()
@@ -323,7 +322,7 @@ class Number26
 
     /**
      * The more detailed version of getAddresses()
-     * 
+     *
      * @return object
      */
     public function getContacts()
@@ -333,7 +332,7 @@ class Number26
 
     /**
      * Possible categories to put a transaction in
-     * 
+     *
      * @return object
      */
     public function getCategories()
@@ -343,7 +342,7 @@ class Number26
 
     /**
      * Get a csv report
-     * 
+     *
      * @param  DateTime $startDate
      * @param  DateTime $endDate
      * @param  string   $saveFileLocation Where to save the report
@@ -355,7 +354,7 @@ class Number26
         $start = $startDate->setTime(0, 0)->getTimestamp() * 1000;
         $end = $endDate->setTime(23, 59, 59)->getTimestamp() * 1000;
         $response = $this->callApi('/api/smrt/reports/' . $start . '/' . $end . '/statements');
-        
+
         if($saveFileLocation != '') {
             $fileName = $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
             file_put_contents($saveFileLocation . '/' . $fileName, $response);
@@ -366,7 +365,7 @@ class Number26
 
     /**
      * Build a csv file for a import. Here in "money money format (german)"
-     * 
+     *
      * @param  integer $offset
      * @param  integer $limit
      */
@@ -376,8 +375,8 @@ class Number26
         $sep = ';';
         $csvOutput = '';
         foreach ($transactions->data as $transaction) {
-            $csvOutput .= (isset($transaction->confirmed) ? date('d.m.Y', ($transaction->confirmed / 1000)) : date('d.m.Y', ($transaction->visibleTS / 1000))) . $sep;
             $csvOutput .= date('d.m.Y', ($transaction->visibleTS / 1000)) . $sep . $sep;
+            $csvOutput .= (isset($transaction->confirmed) ? date('d.m.Y', ($transaction->confirmed / 1000)) : date('d.m.Y', ($transaction->visibleTS / 1000))) . $sep;
             $csvOutput .= trim(isset($transaction->partnerName) ? $transaction->partnerName : $transaction->merchantName) . $sep;
             $csvOutput .= trim(isset($transaction->referenceText) ? $transaction->referenceText : $transaction->merchantName) . $sep;
             $csvOutput .= (isset($transaction->partnerIban) ? $transaction->partnerIban : '') . $sep;
@@ -386,7 +385,7 @@ class Number26
             $csvOutput .= number_format($transaction->amount, 2, ',', '.') . $sep;
             $csvOutput .= $transaction->currencyCode->currencyCode . "\r\n";
         }
-        
+
         $this->csvOutput = $this->csvOutput . $csvOutput;
 
         if (isset($transactions->paging->next)) {
@@ -406,17 +405,17 @@ class Number26
         $csvOutput = 'Datum;Wertstellung;Kategorie;Name;Verwendungszweck;Konto;Bank;Betrag;Währung';
         file_put_contents('number26_account_data.csv', $csvOutput . "\r\n" . $this->csvOutput);
     }
-        
+
     /**
      * Create a new transaction. You have to approve the transfer on the linked device
-     * 
+     *
      * @param  integer $amount
      * @param  string $pin       The personal pin for transactions
      * @param  [type] $bic       Receipients BIC
      * @param  [type] $iban      Receipients IBAN
      * @param  [type] $name      Receivers name
      * @param  [type] $reference
-     * 
+     *
      * @return object
      */
     public function makeTransfer($amount, $pin, $bic, $iban, $name, $reference)
