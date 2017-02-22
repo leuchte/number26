@@ -267,11 +267,12 @@ class Number26
 
     /**
      * Get all transactions
+     *  deprecated; don't use it anymore
      *
      * @param  array $params sort, offset, limit, dir, textFilter
      * @return object
      */
-    public function getTransactions(...$params)
+    public function getTransactions($params)
     {
         return $this->getSmrtTransactions($params);
     }
@@ -282,14 +283,15 @@ class Number26
      * @param  array $params limit, textFilter
      * @return object
      */
-    public function getSmrtTransactions(...$params)
+    public function getSmrtTransactions($params)
     {
-        $params = (isset($params[0])) ? $this->buildParams($params[0]) : '';
+        $params = (isset($params)) ? $this->buildParams($params) : '';
         return $this->callApi('/api/smrt/transactions' . $params);
     }
 
     /**
      * Get a single transaction with the id $id
+     * deprecated; don't use it anymore
      *
      * @param  string $id
      * @return object
@@ -374,16 +376,15 @@ class Number26
         $transactions = $this->getTransactions(['sort' => 'visibleTS', 'dir' => 'ASC', 'offset' => $offset, 'limit' => $limit]);
         $sep = ';';
         $csvOutput = '';
-        foreach ($transactions->data as $transaction) {
+        foreach ($transactions as $transaction) {
             $csvOutput .= date('d.m.Y', ($transaction->visibleTS / 1000)) . $sep . $sep;
             $csvOutput .= (isset($transaction->confirmed) ? date('d.m.Y', ($transaction->confirmed / 1000)) : date('d.m.Y', ($transaction->visibleTS / 1000))) . $sep;
             $csvOutput .= trim(isset($transaction->partnerName) ? $transaction->partnerName : $transaction->merchantName) . $sep;
             $csvOutput .= trim(isset($transaction->referenceText) ? $transaction->referenceText : $transaction->merchantName) . $sep;
             $csvOutput .= (isset($transaction->partnerIban) ? $transaction->partnerIban : '') . $sep;
             $csvOutput .= (isset($transaction->partnerBic) ? $transaction->partnerBic : '') . $sep;
-            $csvOutput .= (in_array($transaction->type, ['DD', 'FT', 'PT', 'AA'])) ? '-' : '';
             $csvOutput .= number_format($transaction->amount, 2, ',', '.') . $sep;
-            $csvOutput .= $transaction->currencyCode->currencyCode . "\r\n";
+            $csvOutput .= $transaction->currencyCode . "\r\n";
         }
 
         $this->csvOutput = $this->csvOutput . $csvOutput;
