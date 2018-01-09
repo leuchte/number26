@@ -9,6 +9,7 @@
  */
 
 namespace leuchte\Number26;
+
 use \DateTime;
 
 class Number26
@@ -22,6 +23,11 @@ class Number26
      * Token used as authentification
      */
     protected $accessToken = null;
+
+    /**
+     * Token used if access is expired
+     */
+    protected $refreshToken = null;
 
     /**
      * Time when session expire
@@ -53,7 +59,6 @@ class Number26
      */
     protected $csvOutput = '';
 
-
     /**
      * Create a new Number26 instance
      *
@@ -64,19 +69,46 @@ class Number26
     {
         if (!$this->isValidConnection()) {
             $apiResult = $this->callApi('/oauth/token', [
-                'grant_type'    => 'password',
-                'username'      => $username,
-                'password'      => $password], true, 'POST');
+                'grant_type' => 'password',
+                'username' => $username,
+                'password' => $password], $basic = true, 'POST');
 
-            if(isset($apiResult->error) || isset($apiResult->error_description)) {
+            if (isset($apiResult->error) || isset($apiResult->error_description)) {
                 die($apiResult->error . ': ' . $apiResult->error_description);
             }
-
-            $this->accessToken = $apiResult->access_token;
-            $this->expiresTime = time() + $apiResult->expires_in;
-            setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
-            setcookie('n26Token', $this->accessToken, $this->expiresTime);
+            $this->setPropertiesAndCookies($apiResult);
         }
+    }
+
+    /**
+     * If the access token is not valid anymore, we refresh our session
+     *
+     */
+    protected function refreshSession()
+    {
+        $apiResult = $this->callApi('/oauth/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $this->refreshToken
+        ], $basic = true, 'POST');
+
+        if (isset($apiResult->error) || isset($apiResult->error_description)) {
+            die($apiResult->error . ': ' . $apiResult->error_description);
+        }
+        $this->setPropertiesAndCookies($apiResult);
+    }
+
+    /**
+     * Set tokens and cookies for our session
+     */
+    protected function setPropertiesAndCookies($apiResult)
+    {
+        $this->accessToken = $apiResult->access_token;
+        $this->refreshToken = $apiResult->refresh_token;
+        $this->expiresTime = time() + $apiResult->expires_in;
+
+        setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
+        setcookie('n26Token', $this->accessToken, $this->expiresTime);
+        setcookie('n26Refresh', $this->refreshToken);
     }
 
     /**
@@ -100,10 +132,11 @@ class Number26
      */
     protected function isValidConnection()
     {
-        if (isset($_COOKIE['n26Expire']) && isset($_COOKIE['n26Token'])) {
+        if (isset($_COOKIE['n26Expire']) && isset($_COOKIE['n26Token']) && isset($_COOKIE['n26Refresh'])) {
             $this->expiresTime = $_COOKIE['n26Expire'];
             if (time() < $this->expiresTime) {
                 $this->accessToken = $_COOKIE['n26Token'];
+                $this->refreshToken = $_COOKIE['n26Refresh'];
 
                 return true;
             }
@@ -120,6 +153,7 @@ class Number26
     {
         setcookie('n26Expire', '', time() - 1000);
         setcookie('n26Token', '', time() - 1000);
+        setcookie('n26Refresh', '', time() - 1000);
     }
 
     /**
@@ -136,6 +170,22 @@ class Number26
         if ($basic == true && is_array($params) && count($params)) {
             $apiResource = $apiResource . '?' . http_build_query($params);
         }
+        $this->callCurl($apiResource, $params, $basic, $method);
+
+        return $this->apiResponse;
+    }
+
+    /**
+     * Set up curl and call the resource
+     *
+     * @param  string  $apiResource
+     * @param  array|string  $params
+     * @param  boolean $basic       Basic auth or with bearer token
+     * @param  string  $method      Default GET
+     * @return string Response
+     */
+    protected function callCurl($apiResource, $params, $basic, $method)
+    {
         $curl = curl_init($this->apiUrl . $apiResource);
         $curlOptions = [
             CURLOPT_HEADER => true,
@@ -153,19 +203,21 @@ class Number26
         $response = curl_exec($curl);
         $this->apiInfo = curl_getinfo($curl);
         $this->apiHeader = substr($response, 0, $this->apiInfo['header_size']);
+        $this->apiResponse = substr($response, $this->apiInfo['header_size']);
+
+        if (strpos($this->apiInfo['content_type'], 'json')) {
+            $this->apiResponse = json_decode($this->apiResponse);
+        }
+        if (isset($this->apiResponse->error) && $this->apiResponse->error == 'invalid_token') {
+            $this->refreshSession();
+            $this->callCurl($apiResource, $params, $basic, $method);
+        }
 
         if (false === $response) {
             $errno = curl_errno($curl);
             $errmsg = curl_error($curl);
             $this->apiError = 'curl-Error: ' . $errno . ': ' . $errmsg;
         }
-        $this->apiResponse = substr($response, $this->apiInfo['header_size']);
-
-        if(strpos($this->apiInfo['content_type'], 'json')) {
-            $this->apiResponse = json_decode($this->apiResponse);
-        }
-
-        return $this->apiResponse;
     }
 
     /**
@@ -357,7 +409,7 @@ class Number26
         $end = $endDate->setTime(23, 59, 59)->getTimestamp() * 1000;
         $response = $this->callApi('/api/smrt/reports/' . $start . '/' . $end . '/statements');
 
-        if($saveFileLocation != '') {
+        if ($saveFileLocation != '') {
             $fileName = $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
             file_put_contents($saveFileLocation . '/' . $fileName, $response);
         }
