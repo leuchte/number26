@@ -231,8 +231,6 @@ class Number26
         $header = ($basic) ? 'Basic bXktdHJ1c3RlZC13ZHBDbGllbnQ6c2VjcmV0' : 'Bearer ' . $this->accessToken;
         $httpHeader = [];
         $httpHeader[] = 'Authorization: ' . $header;
-        $httpHeader[] = 'Accept: application/json';
-        $httpHeader[] = 'Content-Type: application/json';
         $httpHeader[] = 'Accept: */*';
 
         return $httpHeader;
