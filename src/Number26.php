@@ -264,6 +264,15 @@ class Number26
     }
 
     /**
+     * All created spaces
+     *
+     */
+    public function getSpaces()
+    {
+        return $this->callApi('/api/spaces');
+    }
+
+    /**
      * Shows all registered cards
      *
      * @return object
