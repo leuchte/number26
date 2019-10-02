@@ -4,6 +4,7 @@
  * Number26
  *
  * @author   André Daßler <mail@leuchte.net>
+ * @author   Steven Briscoe <me@stevenbriscoe.com>
  * @license  http://opensource.org/licenses/MIT
  * @package  Number26
  */
@@ -15,6 +16,10 @@ use \Exception;
 
 class Number26
 {
+    const STORE_COOKIES = 1;
+
+    const STORE_FILE = 2;
+
     /**
      * API Base url
      */
@@ -61,14 +66,31 @@ class Number26
     protected $csvOutput = '';
 
     /**
+     * The type of store to use for the tokens
+     */
+    protected $store;
+
+    /**
+     * Path to store access tokens
+     */
+    protected $storeAccessTokensFile;
+
+    /**
      * Create a new Number26 instance
      *
      * @param string $username
      * @param string $password
      */
-    public function __construct($username, $password)
+    public function __construct($username, $password, $store = self::STORE_COOKIES)
     {
-        if (!$this->isValidConnection()) {
+        $this->store = $store;
+
+        if($this->store == self::STORE_FILE)
+        {
+            $this->storeAccessTokensFile = $_SERVER['HOME'] . "/.n26";
+        }
+
+        if (! $this->isValidConnection()) {
             $apiResult = $this->callApi('/oauth/token', [
                 'grant_type' => 'password',
                 'username' => $username,
@@ -88,7 +110,9 @@ class Number26
             if (isset($apiResult->error) || isset($apiResult->error_description)) {
                 throw new Exception($apiResult->error . ': ' . $apiResult->error_description);
             }
-            $this->setPropertiesAndCookies($apiResult);
+            $this->setProperties($apiResult);
+        } else {
+            $this->loadProperties();
         }
     }
 
@@ -139,21 +163,68 @@ class Number26
         if (isset($apiResult->error) || isset($apiResult->error_description)) {
             throw new Exception($apiResult->error . ': ' . $apiResult->error_description);
         }
-        $this->setPropertiesAndCookies($apiResult);
+        $this->setProperties($apiResult);
     }
 
     /**
      * Set tokens and cookies for our session
      */
-    protected function setPropertiesAndCookies($apiResult)
+    protected function setProperties($apiResult)
     {
-        $this->accessToken = $apiResult->access_token;
-        $this->refreshToken = $apiResult->refresh_token;
-        $this->expiresTime = time() + $apiResult->expires_in;
+        $this->storeTokens($apiResult->access_token, $apiResult->refresh_token, $apiResult->expires_in);
+    }
 
-        setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
-        setcookie('n26Token', $this->accessToken, $this->expiresTime);
-        setcookie('n26Refresh', $this->refreshToken);
+    /**
+     * Load the tokens from cookies or a file
+     */
+    protected function loadProperties()
+    {
+        switch ($this->store) {
+            case self::STORE_FILE:
+                $tokens = json_decode(file_get_contents($this->storeAccessTokensFile), true);
+                if(is_null($tokens))
+                {
+                    throw new Exception("Failed to load config from: " . $this->storeAccessTokensFile);
+                }
+                else
+                {
+                    $this->accessToken = $tokens["n26Token"];
+                    $this->refreshToken = $tokens["n26Expire"];
+                    $this->expiresTime = $tokens["n26Refresh"];
+                }
+                break;
+            case self::STORE_COOKIES:
+                $this->accessToken = $_COOKIE["n26Token"];
+                $this->refreshToken = $_COOKIE["n26Expire"];
+                $this->expiresTime = $_COOKIE["n26Refresh"];
+                break;
+        }
+    }
+
+    /**
+     * Store the tokens to cookies or a file
+     */
+    protected function storeTokens($accessToken, $refreshToken, $expiresIn)
+    {
+        $this->accessToken = $accessToken;
+        $this->refreshToken = $refreshToken;
+        $this->expiresTime = time() + $expiresIn;
+
+        switch ($this->store) {
+            case self::STORE_FILE:
+                $tokens = [
+                    'n26Expire' => $this->expiresTime,
+                    'n26Token' => $this->accessToken,
+                    'n26Refresh' => $this->refreshToken
+                ];
+                file_put_contents($this->storeAccessTokensFile, json_encode($tokens));
+                break;
+            case self::STORE_COOKIES:
+                setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
+                setcookie('n26Token', $this->accessToken, $expiresTime);
+                setcookie('n26Refresh', $this->refreshToken);
+                break;
+        }
     }
 
     /**
@@ -163,11 +234,7 @@ class Number26
      */
     public function isLoggedIn()
     {
-        if ($this->isValidConnection) {
-            return true;
-        }
-
-        return false;
+        return $this->isValidConnection();
     }
 
     /**
@@ -177,18 +244,14 @@ class Number26
      */
     protected function isValidConnection()
     {
-        if (isset($_COOKIE['n26Expire']) && isset($_COOKIE['n26Token']) && isset($_COOKIE['n26Refresh'])) {
-            $this->expiresTime = $_COOKIE['n26Expire'];
-            if (time() < $this->expiresTime) {
-                $this->accessToken = $_COOKIE['n26Token'];
-                $this->refreshToken = $_COOKIE['n26Refresh'];
-
-                return true;
-            }
+        switch ($this->store) {
+            case self::STORE_FILE:
+                return file_exists($this->storeAccessTokensFile);
+                break;
+            case self::STORE_COOKIES:
+                return isset($_COOKIE['n26Expire']) && isset($_COOKIE['n26Token']) && isset($_COOKIE['n26Refresh']);
+                break;
         }
-        $this->logout();
-
-        return false;
     }
 
     /**
@@ -196,9 +259,16 @@ class Number26
      */
     public function logout()
     {
-        setcookie('n26Expire', '', time() - 1000);
-        setcookie('n26Token', '', time() - 1000);
-        setcookie('n26Refresh', '', time() - 1000);
+        switch ($this->store) {
+            case self::STORE_FILE:
+                @unlink($this->storeAccessTokensFile);
+                break;
+            case self::STORE_COOKIES:
+                setcookie('n26Expire', '', time() - 1000);
+                setcookie('n26Token', '', time() - 1000);
+                setcookie('n26Refresh', '', time() - 1000);
+                break;
+        }
     }
 
     /**
