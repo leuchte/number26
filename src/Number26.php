@@ -11,6 +11,7 @@
 namespace leuchte\Number26;
 
 use \DateTime;
+use \Exception;
 
 class Number26
 {
@@ -71,18 +72,62 @@ class Number26
             $apiResult = $this->callApi('/oauth/token', [
                 'grant_type' => 'password',
                 'username' => $username,
-                'password' => $password], $basic = true, 'POST');
+                'password' => $password
+            ], $basic = true, 'POST');
+
+            if(isset($apiResult->error) && $apiResult->error == "mfa_required") {
+                $this->requestMfaApproval($apiResult->mfaToken);
+
+                $apiResult = $this->completeAuthenticationFlow($apiResult->mfaToken);
+
+                if(is_null($apiResult)) {
+                    throw new Exception("2FA request expired.");
+                }
+            }
 
             if (isset($apiResult->error) || isset($apiResult->error_description)) {
-                die($apiResult->error . ': ' . $apiResult->error_description);
+                throw new Exception($apiResult->error . ': ' . $apiResult->error_description);
             }
             $this->setPropertiesAndCookies($apiResult);
         }
     }
 
     /**
+     * Request to send a 2FA confirmation to the user's mobile device
+     */
+    protected function requestMfaApproval($mfaToken)
+    {
+        return $this->callApi('/api/mfa/challenge', [
+            'challengeType' => 'oob',
+            'mfaToken' => $mfaToken
+        ], $basic = true, 'POST', $json = true);
+    }
+
+    /**
+     * Pool the N26 API until the user has confirmed 2FA request
+     */
+    protected function completeAuthenticationFlow($mfaToken, $wait = 5, $max = 60)
+    {
+        $futureTime = time() + $max;
+
+        while($futureTime > time()) {
+            $apiResult = $this->callApi('/oauth/token', [
+                'grant_type' => 'mfa_oob',
+                'mfaToken' => $mfaToken
+            ], $basic = true, 'POST');
+
+            if(isset($apiResult->access_token)) {
+                return $apiResult;
+            }
+
+            sleep($wait);
+        }
+
+        return null;
+    }
+
+    /**
      * If the access token is not valid anymore, we refresh our session
-     *
      */
     protected function refreshSession()
     {
@@ -165,12 +210,12 @@ class Number26
      * @param  string  $method      Default GET
      * @return object               $this->apiResponse. Further information in $this->apiHeader and $this->apiInfo
      */
-    protected function callApi($apiResource, $params = null, $basic = false, $method = 'GET')
+    protected function callApi($apiResource, $params = null, $basic = false, $method = 'GET', $json = false)
     {
         if ($basic == true && is_array($params) && count($params)) {
             $apiResource = $apiResource . '?' . http_build_query($params);
         }
-        $this->callCurl($apiResource, $params, $basic, $method);
+        $this->callCurl($apiResource, $params, $basic, $method, $json);
 
         return $this->apiResponse;
     }
@@ -184,17 +229,21 @@ class Number26
      * @param  string  $method      Default GET
      * @return string Response
      */
-    protected function callCurl($apiResource, $params, $basic, $method)
+    protected function callCurl($apiResource, $params, $basic, $method, $json = false)
     {
         $curl = curl_init($this->apiUrl . $apiResource);
         $curlOptions = [
             CURLOPT_HEADER => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => $this->getHeader($basic),
+            CURLOPT_HTTPHEADER => $this->getHeader($basic, $json),
             CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_SSL_VERIFYPEER => false];
+            CURLOPT_SSL_VERIFYPEER => false
+        ];
 
         if ($method == 'POST') {
+            if($json) {
+                $params = json_encode($params);
+            }
             $curlOptions[CURLOPT_POST] = true;
             $curlOptions[CURLOPT_POSTFIELDS] = $params;
         }
@@ -226,12 +275,16 @@ class Number26
      * @param  boolean $basic True if bearer token is used
      * @return array         Built header
      */
-    protected function getHeader($basic = false)
+    protected function getHeader($basic = false, $json = false)
     {
         $header = ($basic) ? 'Basic bXktdHJ1c3RlZC13ZHBDbGllbnQ6c2VjcmV0' : 'Bearer ' . $this->accessToken;
         $httpHeader = [];
         $httpHeader[] = 'Authorization: ' . $header;
         $httpHeader[] = 'Accept: */*';
+
+        if($json) {
+            $httpHeader[] = 'Content-Type: application/json';
+        }
 
         return $httpHeader;
     }
