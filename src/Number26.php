@@ -137,7 +137,7 @@ class Number26
         ], $basic = true, 'POST');
 
         if (isset($apiResult->error) || isset($apiResult->error_description)) {
-            die($apiResult->error . ': ' . $apiResult->error_description);
+            throw new Exception($apiResult->error . ': ' . $apiResult->error_description);
         }
         $this->setPropertiesAndCookies($apiResult);
     }
@@ -259,7 +259,7 @@ class Number26
         }
         if (isset($this->apiResponse->error) && $this->apiResponse->error == 'invalid_token') {
             $this->refreshSession();
-            $this->callCurl($apiResource, $params, $basic, $method);
+            $this->callCurl($apiResource, $params, $basic, $method, $json);
         }
 
         if (false === $response) {
