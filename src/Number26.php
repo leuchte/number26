@@ -189,14 +189,14 @@ class Number26
                 else
                 {
                     $this->accessToken = $tokens["n26Token"];
-                    $this->refreshToken = $tokens["n26Expire"];
-                    $this->expiresTime = $tokens["n26Refresh"];
+                    $this->refreshToken = $tokens["n26Refresh"];
+                    $this->expiresTime = $tokens["n26Expire"];
                 }
                 break;
             case self::STORE_COOKIES:
                 $this->accessToken = $_COOKIE["n26Token"];
-                $this->refreshToken = $_COOKIE["n26Expire"];
-                $this->expiresTime = $_COOKIE["n26Refresh"];
+                $this->refreshToken = $_COOKIE["n26Refresh"];
+                $this->expiresTime = $_COOKIE["n26Expire"];
                 break;
         }
     }
