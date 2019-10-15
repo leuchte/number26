@@ -107,8 +107,8 @@ class Number26
                 }
             }
 
-            if (isset($apiResult->error) || isset($apiResult->error_description)) {
-                throw new Exception($apiResult->error . ': ' . $apiResult->error_description);
+            if (isset($apiResult->error)) {
+                throw new Exception($apiResult->error . ': ' . $apiResult->detail);
             }
             $this->setProperties($apiResult);
         } else {
