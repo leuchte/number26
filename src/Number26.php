@@ -221,7 +221,7 @@ class Number26
                 break;
             case self::STORE_COOKIES:
                 setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
-                setcookie('n26Token', $this->accessToken, $expiresTime);
+                setcookie('n26Token', $this->accessToken, $this->expiresTime);
                 setcookie('n26Refresh', $this->refreshToken);
                 break;
         }
