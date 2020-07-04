@@ -115,8 +115,8 @@ class Number26
                 }
             }
 
-            if (isset($apiResult->error) || isset($apiResult->error_description)) {
-                throw new Exception($apiResult->error . ': ' . $apiResult->error_description);
+            if (isset($apiResult->error)) {
+                throw new Exception($apiResult->error . ': ' . $apiResult->detail);
             }
             $this->setProperties($apiResult);
         } else {
@@ -209,14 +209,14 @@ class Number26
                 else
                 {
                     $this->accessToken = $tokens["n26Token"];
-                    $this->refreshToken = $tokens["n26Expire"];
-                    $this->expiresTime = $tokens["n26Refresh"];
+                    $this->refreshToken = $tokens["n26Refresh"];
+                    $this->expiresTime = $tokens["n26Expire"];
                 }
                 break;
             case self::STORE_COOKIES:
                 $this->accessToken = $_COOKIE["n26Token"];
-                $this->refreshToken = $_COOKIE["n26Expire"];
-                $this->expiresTime = $_COOKIE["n26Refresh"];
+                $this->refreshToken = $_COOKIE["n26Refresh"];
+                $this->expiresTime = $_COOKIE["n26Expire"];
                 break;
         }
     }
@@ -241,7 +241,7 @@ class Number26
                 break;
             case self::STORE_COOKIES:
                 setcookie('n26Expire', $this->expiresTime, $this->expiresTime);
-                setcookie('n26Token', $this->accessToken, $expiresTime);
+                setcookie('n26Token', $this->accessToken, $this->expiresTime);
                 setcookie('n26Refresh', $this->refreshToken);
                 break;
         }
