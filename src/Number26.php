@@ -13,6 +13,7 @@ namespace leuchte\Number26;
 
 use \DateTime;
 use \Exception;
+use Ramsey\Uuid\Uuid;
 
 class Number26
 {
@@ -34,6 +35,11 @@ class Number26
      * Token used if access is expired
      */
     protected $refreshToken = null;
+
+    /**
+     * Unique token to identify device
+     */
+    protected $deviceToken = null;
 
     /**
      * Time when session expire
@@ -90,6 +96,8 @@ class Number26
             $this->storeAccessTokensFile = $_SERVER['HOME'] . "/.n26";
         }
 
+        $this->checkDeviceToken();
+
         if (! $this->isValidConnection()) {
             $apiResult = $this->callApi('/oauth/token', [
                 'grant_type' => 'password',
@@ -114,6 +122,18 @@ class Number26
         } else {
             $this->loadProperties();
         }
+    }
+
+    /**
+     * Check for a device token and set it if necessary
+     */
+    protected function checkDeviceToken()
+    {
+        if ($this->deviceToken === null) {
+            $this->deviceToken = Uuid::uuid4();
+        }
+
+        return $this;
     }
 
     /**
@@ -351,6 +371,7 @@ class Number26
         $httpHeader = [];
         $httpHeader[] = 'Authorization: ' . $header;
         $httpHeader[] = 'Accept: */*';
+        $httpHeader[] = 'device-token: ' . $this->deviceToken;
 
         if($json) {
             $httpHeader[] = 'Content-Type: application/json';
