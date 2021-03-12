@@ -367,7 +367,7 @@ class Number26
      */
     protected function getHeader($basic = false, $json = false)
     {
-        $header = ($basic) ? 'Basic bXktdHJ1c3RlZC13ZHBDbGllbnQ6c2VjcmV0' : 'Bearer ' . $this->accessToken;
+        $header = ($basic) ? 'Basic bmF0aXZlaW9zOg==' : 'Bearer ' . $this->accessToken;
         $httpHeader = [];
         $httpHeader[] = 'Authorization: ' . $header;
         $httpHeader[] = 'Accept: */*';
