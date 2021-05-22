@@ -410,10 +410,22 @@ class Number26
     /**
      * All created spaces
      *
+     * @return object
      */
     public function getSpaces()
     {
         return $this->callApi('/api/spaces');
+    }
+
+    /**
+     * Information about space with id $id
+     *
+     * @param  string $id
+     * @return object
+     */
+    public function getSpace($id)
+    {
+        return $this->callApi('/api/spaces/' . $id);
     }
 
     /**
@@ -424,17 +436,6 @@ class Number26
     public function getCards()
     {
         return $this->callApi('/api/v2/cards');
-    }
-
-    /**
-     * Information about card with id $id
-     *
-     * @param  string $id
-     * @return object
-     */
-    public function getCard($id)
-    {
-        return $this->callApi('/api/cards/' . $id);
     }
 
     /**
@@ -470,23 +471,11 @@ class Number26
 
     /**
      * Get all transactions
-     *  deprecated; don't use it anymore
-     *
-     * @param  array $params sort, offset, limit, dir, textFilter
-     * @return object
-     */
-    public function getTransactions($params)
-    {
-        return $this->getSmrtTransactions($params);
-    }
-
-    /**
-     * Get all smart transactions
      *
      * @param  array $params limit, textFilter
      * @return object
      */
-    public function getSmrtTransactions($params)
+    public function getTransactions($params = [])
     {
         $params = (isset($params)) ? $this->buildParams($params) : '';
         return $this->callApi('/api/smrt/transactions' . $params);
@@ -494,39 +483,17 @@ class Number26
 
     /**
      * Get a single transaction with the id $id
-     * deprecated; don't use it anymore
      *
      * @param  string $id
      * @return object
      */
     public function getTransaction($id)
     {
-        return $this->callApi('/api/transactions/' . $id);
-    }
-
-    /**
-     * Get a smart single transaction with the id $id
-     *
-     * @param  string $id
-     * @return object
-     */
-    public function getSmrtTransaction($id)
-    {
         return $this->callApi('/api/smrt/transactions/' . $id);
     }
 
     /**
-     * Get all transfer recipients so far
-     *
-     * @return object
-     */
-    public function getRecipients()
-    {
-        return $this->callApi('/api/transactions/recipients');
-    }
-
-    /**
-     * The more detailed version of getAddresses()
+     * All transfer contacts
      *
      * @return object
      */
@@ -559,7 +526,6 @@ class Number26
         $start = $startDate->setTime(0, 0)->getTimestamp() * 1000;
         $end = $endDate->setTime(23, 59, 59)->getTimestamp() * 1000;
         $response = $this->callApi('/api/smrt/reports/' . $start . '/' . $end . '/statements');
-
         if ($saveFileLocation != '') {
             $fileName = $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
             file_put_contents($saveFileLocation . '/' . $fileName, $response);
@@ -608,33 +574,5 @@ class Number26
     {
         $csvOutput = 'Datum;Wertstellung;Kategorie;Name;Verwendungszweck;Konto;Bank;Betrag;Währung';
         file_put_contents('number26_account_data.csv', $csvOutput . "\r\n" . $this->csvOutput);
-    }
-
-    /**
-     * Create a new transaction. You have to approve the transfer on the linked device
-     *
-     * @param  integer $amount
-     * @param  string $pin       The personal pin for transactions
-     * @param  [type] $bic       Receipients BIC
-     * @param  [type] $iban      Receipients IBAN
-     * @param  [type] $name      Receivers name
-     * @param  [type] $reference
-     *
-     * @return object
-     */
-    public function makeTransfer($amount, $pin, $bic, $iban, $name, $reference)
-    {
-        $content = [
-            'pin' => $pin,
-            'transaction' => [
-                'partnerBic' => $bic,
-                'amount' => $amount,
-                'type' => 'DT',
-                'partnerIban' => $iban,
-                'partnerName' => $name,
-                'referenceText' => $reference
-        ]];
-
-        return $this->callApi('/api/transactions', json_encode($content), false, 'POST');
     }
 }
