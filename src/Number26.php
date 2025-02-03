@@ -11,9 +11,9 @@
 
 namespace leuchte\Number26;
 
-use \DateTime;
+use \DateTimeImmutable;
 use \Exception;
-use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\Nonstandard\Uuid;
 
 class Number26
 {
@@ -72,6 +72,16 @@ class Number26
     protected $csvOutput = '';
 
     /**
+     * Filename for the csv file
+     */
+    protected $csvFilename = 'n26_account_data';
+
+    /**
+     * Header for the csv file
+     */
+    protected $csvHeader = 'Datum;Wertstellung;Kategorie;Name;Verwendungszweck;Konto;Bank;Betrag;Währung';
+
+    /**
      * The type of store to use for the tokens
      */
     protected $store;
@@ -91,8 +101,7 @@ class Number26
     {
         $this->store = $store;
 
-        if($this->store == self::STORE_FILE)
-        {
+        if ($this->store == self::STORE_FILE) {
             $this->storeAccessTokensFile = $_SERVER['HOME'] . "/.n26";
         }
 
@@ -105,12 +114,12 @@ class Number26
                 'password' => $password
             ], $basic = true, 'POST');
 
-            if(isset($apiResult->error) && $apiResult->error == "mfa_required") {
+            if (isset($apiResult->error) && $apiResult->error == "mfa_required") {
                 $this->requestMfaApproval($apiResult->mfaToken);
 
                 $apiResult = $this->completeAuthenticationFlow($apiResult->mfaToken);
 
-                if(is_null($apiResult)) {
+                if (is_null($apiResult)) {
                     throw new Exception("2FA request expired.");
                 }
             }
@@ -154,13 +163,13 @@ class Number26
     {
         $futureTime = time() + $max;
 
-        while($futureTime > time()) {
+        while ($futureTime > time()) {
             $apiResult = $this->callApi('/oauth/token', [
                 'grant_type' => 'mfa_oob',
                 'mfaToken' => $mfaToken
             ], $basic = true, 'POST');
 
-            if(isset($apiResult->access_token)) {
+            if (isset($apiResult->access_token)) {
                 return $apiResult;
             }
 
@@ -202,12 +211,9 @@ class Number26
         switch ($this->store) {
             case self::STORE_FILE:
                 $tokens = json_decode(file_get_contents($this->storeAccessTokensFile), true);
-                if(is_null($tokens))
-                {
+                if (is_null($tokens)) {
                     throw new Exception("Failed to load config from: " . $this->storeAccessTokensFile);
-                }
-                else
-                {
+                } else {
                     $this->accessToken = $tokens["n26Token"];
                     $this->refreshToken = $tokens["n26Refresh"];
                     $this->expiresTime = $tokens["n26Expire"];
@@ -326,12 +332,12 @@ class Number26
             CURLOPT_HEADER => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $this->getHeader($basic, $json),
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_SSL_VERIFYPEER => false
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_SSL_VERIFYPEER => 1
         ];
 
         if ($method == 'POST') {
-            if($json) {
+            if ($json) {
                 $params = json_encode($params);
             }
             $curlOptions[CURLOPT_POST] = true;
@@ -373,7 +379,7 @@ class Number26
         $httpHeader[] = 'Accept: */*';
         $httpHeader[] = 'device-token: ' . $this->deviceToken;
 
-        if($json) {
+        if ($json) {
             $httpHeader[] = 'Content-Type: application/json';
         }
 
@@ -399,12 +405,35 @@ class Number26
     /**
      * Returns basic information about the account holder
      *
-     * @param  boolean $full true for more informations
      * @return object
      */
     public function getMe($full = false)
     {
-        return $this->callApi('/api/me' . (($full) ? '?full=true' : ''));
+        /**
+         * Full is depcreated. Will be removed.
+         */
+        return $this->callApi('/api/me');
+    }
+
+    /**
+     * Returns features of a given country
+     *
+     * @param  string $country
+     * @return object
+     */
+    public function getCountryFeatures($country = 'DEU')
+    {
+        return $this->callApi('/api/features/countries/' . $country);
+    }
+
+    /**
+     * Returns the api version
+     *
+     * @return object
+     */
+    public function getVersion()
+    {
+        return $this->callApi('/api/version');
     }
 
     /**
@@ -414,7 +443,9 @@ class Number26
      */
     public function getSpaces()
     {
-        return $this->callApi('/api/spaces');
+        // Spaces is depcreated. Will be removed.
+        return [];
+        // return $this->callApi('/api/spaces');
     }
 
     /**
@@ -425,7 +456,9 @@ class Number26
      */
     public function getSpace($id)
     {
-        return $this->callApi('/api/spaces/' . $id);
+        // Spaces is depcreated. Will be removed.
+        return [];
+        // return $this->callApi('/api/spaces/' . $id);
     }
 
     /**
@@ -466,13 +499,15 @@ class Number26
      */
     public function getAddress($id)
     {
-        return $this->callApi('/api/addresses/' . $id);
+        // Get a single address is depcreated. Will be removed.
+        return [];
+        // return $this->callApi('/api/addresses/' . $id);
     }
 
     /**
      * Get all transactions
      *
-     * @param  array $params limit, textFilter
+     * @param  array $params limit, textFilter, lastId, from, to
      * @return object
      */
     public function getTransactions($params = [])
@@ -499,7 +534,9 @@ class Number26
      */
     public function getContacts()
     {
-        return $this->callApi('/api/smrt/contacts');
+        // Contacts is depcreated. Will be removed.
+        return [];
+        // return $this->callApi('/api/smrt/contacts');
     }
 
     /**
@@ -513,66 +550,123 @@ class Number26
     }
 
     /**
+     * Get all statements
+     *
+     * @return object
+     */
+    public function getStatements()
+    {
+        return $this->callApi('/api/statements');
+    }
+
+    /**
+     * Get pdf statement with the id $id
+     *
+     * @param  string $id
+     * @return string PDF
+     */
+    public function getStatement($id)
+    {
+        return $this->callApi('/api/statements/' . $id);
+    }
+
+    /**
      * Get a csv report
      *
-     * @param  DateTime $startDate
-     * @param  DateTime $endDate
+     * @param  DateTimeImmutable $startDate
+     * @param  DateTimeImmutable $endDate
      * @param  string   $saveFileLocation Where to save the report
      * @return object
      */
-    public function getReport(DateTime $startDate, DateTime $endDate, $saveFileLocation = '')
+    public function getReport(DateTimeImmutable $startDate, DateTimeImmutable $endDate, $saveFileLocation = '')
     {
-        // Use the whole start- and endday in microseconds
-        $start = $startDate->setTime(0, 0)->getTimestamp() * 1000;
-        $end = $endDate->setTime(23, 59, 59)->getTimestamp() * 1000;
-        $response = $this->callApi('/api/smrt/reports/' . $start . '/' . $end . '/statements');
-        if ($saveFileLocation != '') {
-            $fileName = $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
-            file_put_contents($saveFileLocation . '/' . $fileName, $response);
-        }
+        // getReport is depcreated. Will be removed. Use getStatements instead
+        return [];
+        // // Use the whole start- and endday in microseconds
+        // $start = $startDate->setTime(0, 0)->getTimestamp() * 1000;
+        // $end = $endDate->setTime(23, 59, 59)->getTimestamp() * 1000;
+        // $response = $this->callApi('/api/smrt/reports/' . $start . '/' . $end . '/statements');
+        // if ($saveFileLocation != '') {
+        //     $fileName = $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
+        //     file_put_contents($saveFileLocation . '/' . $fileName, $response);
+        // }
 
-        return $response;
+        // return $response;
     }
 
     /**
      * Build a csv file for a import. Here in "money money format (german)"
      *
-     * @param  integer $offset
+     * @param  string $lastId
      * @param  integer $limit
+     * @param  integer $from
+     * @param  integer $to
      */
-    public function getCsv($offset = 0, $limit = 50)
+    public function getCsv($lastId = null, $limit = 50, $from = null, $to = null, $textFilter = null)
     {
-        $transactions = $this->getTransactions(['sort' => 'visibleTS', 'dir' => 'ASC', 'offset' => $offset, 'limit' => $limit]);
+        $transactions = $this->getTransactions(['lastId' => $lastId, 'limit' => $limit, 'from' => $from, 'to' => $to, 'textFilter' => $textFilter]);
+        if (isset($transactions->title) && $transactions->title === 'Error') {
+            return ['Error' => $transactions];
+        }
+
+        if (count($transactions) === 0) {
+            $this->writeCsvFile();
+            return;
+        }
         $sep = ';';
         $csvOutput = '';
+        $lastTransactionId = null;
         foreach ($transactions as $transaction) {
-            $csvOutput .= date('d.m.Y', ($transaction->visibleTS / 1000)) . $sep . $sep;
-            $csvOutput .= (isset($transaction->confirmed) ? date('d.m.Y', ($transaction->confirmed / 1000)) : date('d.m.Y', ($transaction->visibleTS / 1000))) . $sep;
-            $csvOutput .= trim(isset($transaction->partnerName) ? $transaction->partnerName : $transaction->merchantName) . $sep;
-            $csvOutput .= trim(isset($transaction->referenceText) ? $transaction->referenceText : $transaction->merchantName) . $sep;
+            $visibleDate = (new DateTimeImmutable())->setTimestamp((int) ($transaction->visibleTS / 1000));
+            $confirmedDate = isset($transaction->confirmed) ? (new DateTimeImmutable())->setTimestamp((int) ($transaction->confirmed / 1000)) : $visibleDate;
+            $merchantName = isset($transaction->merchantName) ? trim($transaction->merchantName) : '';
+            $csvOutput .= $visibleDate->format('d.m.Y') . $sep . $sep;
+            $csvOutput .= $confirmedDate->format('d.m.Y') . $sep;
+            $csvOutput .= (isset($transaction->partnerName) ? trim($transaction->partnerName) : $merchantName) . $sep;
+            $csvOutput .= (isset($transaction->referenceText) ? trim($transaction->referenceText) : $merchantName) . $sep;
             $csvOutput .= (isset($transaction->partnerIban) ? $transaction->partnerIban : '') . $sep;
             $csvOutput .= (isset($transaction->partnerBic) ? $transaction->partnerBic : '') . $sep;
             $csvOutput .= number_format($transaction->amount, 2, ',', '.') . $sep;
             $csvOutput .= $transaction->currencyCode . "\r\n";
+            $lastTransactionId = $transaction->id;
         }
-
         $this->csvOutput = $this->csvOutput . $csvOutput;
 
-        if (isset($transactions->paging->next)) {
-            $this->getCsv($offset + $limit);
+        $this->getCsv($lastTransactionId, $limit, $from, $to);
+    }
 
-            return;
-        }
+    /**
+     * Set the filename for the csv file
+     * 
+     * @param string $filename
+     */
+    public function setCsvFilename($filename)
+    {
+        $this->csvFilename = $filename;
 
-        $this->writeCsvFile();
+        return $this;
+    }
+
+    /**
+     * Set the header for the csv file
+     * 
+     * @param string $header
+     */
+    public function setCsvHeader($Header)
+    {
+        $this->csvHeader = $Header;
+
+        return $this;
     }
 
     /**
      * Write the csv file
+     * 
+     * @param string $fileName
+     * @param string $fileHeader
      */
     protected function writeCsvFile()
     {
-        $csvOutput = 'Datum;Wertstellung;Kategorie;Name;Verwendungszweck;Konto;Bank;Betrag;Währung';
-        file_put_contents('number26_account_data.csv', $csvOutput . "\r\n" . $this->csvOutput);
+        file_put_contents($this->csvFilename . '.csv', $this->csvHeader . "\r\n" . $this->csvOutput);
     }
 }

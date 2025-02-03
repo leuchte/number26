@@ -1,6 +1,6 @@
 {
     "name": "leuchte/number26",
-    "description": "Simple PHP wrapper for the unofficial number26.eu api",
+    "description": "Simple PHP wrapper for the unofficial N26 bank (n26.eu) api",
     "license": "MIT",
     "authors": [
         {
@@ -9,7 +9,7 @@
         }
     ],
     "require": {
-        "php": ">=5.6",
+        "php": "^8.0",
         "ramsey/uuid": "^4.0"
     },
     "autoload": {
@@ -18,8 +18,8 @@
         }
     },
     "extra": {
-	    "branch-alias": {
-	      "dev-master": "0.1-dev"
-	    }
-  }
+        "branch-alias": {
+            "dev-master": "0.1-dev"
+        }
+    }
 }
