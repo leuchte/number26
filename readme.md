@@ -63,7 +63,7 @@ $version = $n26->getVersion();
 // Get a list of all statements
 $statements = $n26->getStatements();
 
-// Get a specifig statement as pdf
+// Get a specific statement as pdf
 $statement = $n26->getStatement('statement-2024-12');
 
 // Get a csv file with all transactions
